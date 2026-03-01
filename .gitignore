@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+build/
+DerivedData/
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Xcode project files with signing info (legacy sub-projects)
+# The main Notcher app uses XcodeGen (project.yml) - no pbxproj needed in repo
+music-notch/MusicNotch.xcodeproj/
+claude-usage-displaynotch/ClaudeStatsNotch/ClaudeStatsNotch.xcodeproj/
+radius-display/CornerRadius.xcodeproj/
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+
+# Misc
+*.swp
+*~
+*.orig
