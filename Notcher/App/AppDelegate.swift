@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupModules() {
         registry.register(MusicNotchModule())
+        registry.register(ClaudeStatsModule())
         registry.register(CornerRadiusModule())
     }
 

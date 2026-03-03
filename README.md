@@ -2,12 +2,15 @@
 
 A modular macOS menu bar app that puts useful information in your MacBook's notch area.
 
-Notcher runs as a menu bar app with a unified dropdown menu, inline per-module settings, and full App Store sandbox compliance.
+Notcher runs as a menu bar app with a unified dropdown menu, inline per-module settings, and multi-display support.
 
 ## Modules
 
 ### MusicNotch
 Displays the currently playing track from Apple Music alongside album artwork in the notch area. Uses MusicKit and the iTunes Search API for artwork — no AppleScript, no permissions prompts. Configurable size presets and text alignment.
+
+### ClaudeStats
+Shows your Claude AI usage statistics directly in the notch. Tracks session and weekly usage with percentage bars, pacing arrows (ahead/behind), and buffer/exhaustion time estimates. Displays per-model breakdown (Opus, Sonnet) and plan badge (Pro, Max, Team). Authenticates via your `sessionKey` cookie from claude.ai, with configurable refresh intervals.
 
 ### CornerRadius
 Adds rounded corner overlays to your screen edges as a visual polish layer. Per-corner toggles, custom sizing, and multi-display support. Runs independently alongside any notch module.
@@ -18,10 +21,9 @@ Adds rounded corner overlays to your screen edges as a visual polish layer. Per-
 - **Modular architecture** — each module implements `NotcherModule` protocol
 - **Multi-display support** — assign modules to different screens
 - **Inline quick settings** in the dropdown, plus full settings windows
-- **App sandbox** enabled with network-only entitlement
+- **Dark mode aware** menu bar icon (template image)
 - **Privacy manifest** included (UserDefaults CA92.1)
 - **Accessibility labels** on all interactive controls
-- **Dark mode aware** menu bar icon (template image)
 
 ## Architecture
 
@@ -42,7 +44,7 @@ protocol NotcherModule: ObservableObject {
 ```
 
 Two categories control behavior:
-- **Notch** modules (MusicNotch) — mutually exclusive per display
+- **Notch** modules (MusicNotch, ClaudeStats) — mutually exclusive per display
 - **Effect** modules (CornerRadius) — run alongside any notch module
 
 ## Requirements
@@ -74,6 +76,7 @@ Notcher/
     ├── Core/                    # ModuleProtocol, NotchWindow, DisplayManager
     ├── Modules/
     │   ├── MusicNotch/          # Apple Music now-playing display
+    │   ├── ClaudeStats/         # Claude AI usage statistics
     │   └── CornerRadius/        # Screen corner overlays
     ├── UI/                      # Shared menu and settings views
     └── PrivacyInfo.xcprivacy    # App privacy manifest
