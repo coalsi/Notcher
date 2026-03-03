@@ -32,4 +32,5 @@ targets:
     entitlements:
       path: Notcher/Notcher.entitlements
       properties:
-        com.apple.security.app-sandbox: false
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true

@@ -41,6 +41,7 @@ struct ModuleRowView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.trailing, 4)
+                    .accessibilityLabel(isExpanded ? "Collapse \(module.name) settings" : "Expand \(module.name) settings")
                 }
 
                 // Toggle switch for all module types
@@ -50,6 +51,7 @@ struct ModuleRowView: View {
                 ))
                 .toggleStyle(.switch)
                 .scaleEffect(0.7)
+                .accessibilityLabel("Toggle \(module.name)")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)

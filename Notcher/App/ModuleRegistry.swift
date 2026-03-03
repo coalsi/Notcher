@@ -147,6 +147,7 @@ final class ModuleRegistry: ObservableObject {
             module.isEnabled = true
         }
         saveModuleState(module)
+        objectWillChange.send()
     }
 
     /// Called when a module's display assignment changes

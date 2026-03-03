@@ -19,28 +19,29 @@ final class CornerRadiusModule: NotcherModule, ObservableObject {
 
     private let settings = CornerRadiusSettings.shared
     private var windowControllers: [CGDirectDisplayID: CornerWindowController] = [:]
-    private var cancellables = Set<AnyCancellable>()
+    private var settingsCancellables = Set<AnyCancellable>()
+    private var lifecycleCancellables = Set<AnyCancellable>()
 
     init() {
         // Observe settings changes
         settings.$sizePreset
             .sink { [weak self] _ in self?.updateAllCorners() }
-            .store(in: &cancellables)
+            .store(in: &settingsCancellables)
         settings.$customSize
             .sink { [weak self] _ in self?.updateAllCorners() }
-            .store(in: &cancellables)
+            .store(in: &settingsCancellables)
         settings.$topLeftEnabled
             .sink { [weak self] _ in self?.updateAllCorners() }
-            .store(in: &cancellables)
+            .store(in: &settingsCancellables)
         settings.$topRightEnabled
             .sink { [weak self] _ in self?.updateAllCorners() }
-            .store(in: &cancellables)
+            .store(in: &settingsCancellables)
         settings.$bottomLeftEnabled
             .sink { [weak self] _ in self?.updateAllCorners() }
-            .store(in: &cancellables)
+            .store(in: &settingsCancellables)
         settings.$bottomRightEnabled
             .sink { [weak self] _ in self?.updateAllCorners() }
-            .store(in: &cancellables)
+            .store(in: &settingsCancellables)
     }
 
     func activate() {
@@ -51,7 +52,7 @@ final class CornerRadiusModule: NotcherModule, ObservableObject {
     func deactivate() {
         hideAllCorners()
         windowControllers.removeAll()
-        // Note: cancellables for display observers will be cleared when module is deallocated
+        lifecycleCancellables.removeAll()
     }
 
     // MARK: - Window Controllers
@@ -102,14 +103,14 @@ final class CornerRadiusModule: NotcherModule, ObservableObject {
             .sink { [weak self] _ in
                 self?.handleDisplayChange()
             }
-            .store(in: &cancellables)
+            .store(in: &lifecycleCancellables)
 
         // Sleep/Wake notifications
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)
             .sink { [weak self] _ in
                 self?.hideAllCorners()
             }
-            .store(in: &cancellables)
+            .store(in: &lifecycleCancellables)
 
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)
             .sink { [weak self] _ in
@@ -118,7 +119,7 @@ final class CornerRadiusModule: NotcherModule, ObservableObject {
                     self?.refreshAllCorners()
                 }
             }
-            .store(in: &cancellables)
+            .store(in: &lifecycleCancellables)
     }
 
     private func handleDisplayChange() {

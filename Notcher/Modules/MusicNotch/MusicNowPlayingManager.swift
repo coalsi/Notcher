@@ -19,6 +19,8 @@ final class MusicNowPlayingManager: ObservableObject {
     @Published private(set) var isPlaying = false
 
     private var lastLoadedArtworkTitle: String?
+    private var cancellables = Set<AnyCancellable>()
+    private var artworkTask: Task<Void, Never>?
 
     var hasNowPlaying: Bool { currentTitle != nil }
 
@@ -41,16 +43,16 @@ final class MusicNowPlayingManager: ObservableObject {
     }
 
     private func startObserving() {
-        DistributedNotificationCenter.default().addObserver(
-            self,
-            selector: #selector(handleMusicNotification(_:)),
-            name: NSNotification.Name("com.apple.Music.playerInfo"),
-            object: nil
-        )
-        fetchCurrentTrackInfo()
+        DistributedNotificationCenter.default()
+            .publisher(for: NSNotification.Name("com.apple.Music.playerInfo"))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                self?.handleMusicNotification(notification)
+            }
+            .store(in: &cancellables)
     }
 
-    @objc private func handleMusicNotification(_ notification: Notification) {
+    private func handleMusicNotification(_ notification: Notification) {
         guard let userInfo = notification.userInfo else { return }
 
         let newTitle = userInfo["Name"] as? String
@@ -58,85 +60,33 @@ final class MusicNowPlayingManager: ObservableObject {
         let newAlbum = userInfo["Album"] as? String
         let playerState = userInfo["Player State"] as? String
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+        currentTitle = newTitle
+        currentArtist = newArtist
+        currentAlbum = newAlbum
+        isPlaying = playerState == "Playing"
 
-            self.currentTitle = newTitle
-            self.currentArtist = newArtist
-            self.currentAlbum = newAlbum
-            self.isPlaying = playerState == "Playing"
-
-            if newTitle != self.lastLoadedArtworkTitle, let title = newTitle {
-                self.lastLoadedArtworkTitle = title
-                Task {
-                    await self.loadArtworkForTrack(title: title, artist: newArtist, album: newAlbum)
-                }
-            }
-
-            if newTitle == nil {
-                self.currentArtwork = nil
-                self.lastLoadedArtworkTitle = nil
+        if newTitle != lastLoadedArtworkTitle, let title = newTitle {
+            lastLoadedArtworkTitle = title
+            artworkTask?.cancel()
+            artworkTask = Task {
+                await loadArtworkForTrack(title: title, artist: newArtist, album: newAlbum)
             }
         }
-    }
 
-    private func fetchCurrentTrackInfo() {
-        let script = """
-        tell application "Music"
-            if player state is playing then
-                set trackName to name of current track
-                set trackArtist to artist of current track
-                set trackAlbum to album of current track
-                return trackName & "||" & trackArtist & "||" & trackAlbum & "||Playing"
-            else if player state is paused then
-                set trackName to name of current track
-                set trackArtist to artist of current track
-                set trackAlbum to album of current track
-                return trackName & "||" & trackArtist & "||" & trackAlbum & "||Paused"
-            else
-                return "||||||Stopped"
-            end if
-        end tell
-        """
-
-        Task {
-            if let appleScript = NSAppleScript(source: script) {
-                var error: NSDictionary?
-                let result = appleScript.executeAndReturnError(&error)
-
-                if error == nil, let output = result.stringValue {
-                    let parts = output.components(separatedBy: "||")
-                    if parts.count >= 4 {
-                        await MainActor.run {
-                            let title = parts[0].isEmpty ? nil : parts[0]
-                            let artist = parts[1].isEmpty ? nil : parts[1]
-                            let album = parts[2].isEmpty ? nil : parts[2]
-                            let state = parts[3]
-
-                            self.currentTitle = title
-                            self.currentArtist = artist
-                            self.currentAlbum = album
-                            self.isPlaying = state == "Playing"
-
-                            if let title = title, title != self.lastLoadedArtworkTitle {
-                                self.lastLoadedArtworkTitle = title
-                                Task {
-                                    await self.loadArtworkForTrack(title: title, artist: artist, album: album)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        if newTitle == nil {
+            currentArtwork = nil
+            lastLoadedArtworkTitle = nil
         }
     }
 
     private func loadArtworkForTrack(title: String, artist: String?, album: String?) async {
-        if let image = await loadArtworkViaAppleScript() {
+        // Try MusicKit catalog search first
+        if let image = await loadArtworkViaMusicKit(title: title, artist: artist) {
             await MainActor.run { self.currentArtwork = image }
             return
         }
 
+        // Fall back to iTunes Search API
         if let image = await loadArtworkViaiTunesSearch(title: title, artist: artist, album: album) {
             await MainActor.run { self.currentArtwork = image }
             return
@@ -145,48 +95,27 @@ final class MusicNowPlayingManager: ObservableObject {
         await MainActor.run { self.currentArtwork = nil }
     }
 
-    private func loadArtworkViaAppleScript() async -> NSImage? {
-        let tempPath = NSTemporaryDirectory() + "NotcherMusicArtwork.png"
+    private func loadArtworkViaMusicKit(title: String, artist: String?) async -> NSImage? {
+        var request = MusicCatalogSearchRequest(term: artist != nil ? "\(title) \(artist!)" : title, types: [Song.self])
+        request.limit = 5
 
-        let script = """
-        tell application "Music"
-            try
-                set artworkCount to count of artworks of current track
-                if artworkCount > 0 then
-                    set theArtwork to artwork 1 of current track
-                    set artworkData to raw data of theArtwork
-                    set theFile to open for access POSIX file "\(tempPath)" with write permission
-                    set eof theFile to 0
-                    write artworkData to theFile
-                    close access theFile
-                    return "success"
-                else
-                    return "no artwork"
-                end if
-            on error errMsg
-                try
-                    close access POSIX file "\(tempPath)"
-                end try
-                return "error: " & errMsg
-            end try
-        end tell
-        """
+        do {
+            let response = try await request.response()
+            // Find best match
+            let match = response.songs.first { song in
+                song.title.lowercased() == title.lowercased()
+            } ?? response.songs.first
 
-        guard let appleScript = NSAppleScript(source: script) else { return nil }
+            guard let song = match, let artwork = song.artwork else { return nil }
 
-        var error: NSDictionary?
-        let result = appleScript.executeAndReturnError(&error)
+            let url = artwork.url(width: 600, height: 600)
+            guard let url = url else { return nil }
 
-        if error != nil { return nil }
-
-        if result.stringValue == "success" {
-            if let image = NSImage(contentsOfFile: tempPath) {
-                try? FileManager.default.removeItem(atPath: tempPath)
-                return image
-            }
+            let (data, _) = try await URLSession.shared.data(from: url)
+            return NSImage(data: data)
+        } catch {
+            return nil
         }
-
-        return nil
     }
 
     private func loadArtworkViaiTunesSearch(title: String, artist: String?, album: String?) async -> NSImage? {
@@ -231,10 +160,12 @@ final class MusicNowPlayingManager: ObservableObject {
     }
 
     func stopObserving() {
-        DistributedNotificationCenter.default().removeObserver(self)
+        cancellables.removeAll()
+        artworkTask?.cancel()
+        artworkTask = nil
     }
 
     deinit {
-        stopObserving()
+        artworkTask?.cancel()
     }
 }

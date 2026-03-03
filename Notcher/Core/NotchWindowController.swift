@@ -8,31 +8,6 @@
 import AppKit
 import SwiftUI
 
-/// Display selection preference
-enum DisplaySelection: Equatable {
-    case automatic
-    case specific(displayID: CGDirectDisplayID)
-
-    private static let defaultsKey = "notcher.selectedDisplayID"
-
-    static func load() -> DisplaySelection {
-        let savedID = UserDefaults.standard.integer(forKey: defaultsKey)
-        if savedID == 0 {
-            return .automatic
-        }
-        return .specific(displayID: CGDirectDisplayID(savedID))
-    }
-
-    func save() {
-        switch self {
-        case .automatic:
-            UserDefaults.standard.set(0, forKey: DisplaySelection.defaultsKey)
-        case .specific(let displayID):
-            UserDefaults.standard.set(Int(displayID), forKey: DisplaySelection.defaultsKey)
-        }
-    }
-}
-
 /// Base window controller for notch-style modules
 class NotchWindowController: NSWindowController {
     private var targetDisplayID: CGDirectDisplayID?

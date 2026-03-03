@@ -23,7 +23,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupModules() {
         registry.register(MusicNotchModule())
-        registry.register(ClaudeStatsModule())
         registry.register(CornerRadiusModule())
     }
 
@@ -95,12 +94,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleWake() {
-        // Refresh all active notch modules after wake
+        // Refresh all active notch modules after wake (deactivate first to avoid leaking windows)
         for (_, module) in registry.activeNotchModules {
+            module.deactivate()
             module.activate()
         }
         // Refresh active effect modules
         for module in registry.effectModules where module.isEnabled {
+            module.deactivate()
             module.activate()
         }
     }

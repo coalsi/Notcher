@@ -22,6 +22,17 @@ radius-display/CornerRadius.xcodeproj/
 Packages/
 Package.resolved
 
+# Legacy standalone projects (pre-unified)
+claude-usage-displaynotch/
+music-notch/
+radius-display/
+
+# Claude Usage Monitor (separate repo)
+claude-usage-monitor/
+
+# Firebase
+firebase-debug.log
+
 # Misc
 *.swp
 *~

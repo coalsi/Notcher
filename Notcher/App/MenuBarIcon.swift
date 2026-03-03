@@ -57,6 +57,6 @@ func createNotcherMenuBarIcon() -> NSImage {
         return true
     }
 
-    image.isTemplate = false
+    image.isTemplate = true
     return image
 }

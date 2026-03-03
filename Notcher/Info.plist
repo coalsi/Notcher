@@ -12,6 +12,8 @@
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>$(PRODUCT_NAME)</string>
+    <key>CFBundleDisplayName</key>
+    <string>Notcher</string>
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
@@ -24,8 +26,6 @@
     <true/>
     <key>NSAppleMusicUsageDescription</key>
     <string>Notcher displays your currently playing song from Apple Music</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>Notcher communicates with Music.app to get now playing information</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>

@@ -84,6 +84,7 @@ struct NotcherMenuView: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(",", modifiers: .command)
+                .accessibilityLabel("Open Settings")
 
                 Spacer()
 
@@ -99,6 +100,7 @@ struct NotcherMenuView: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut("q", modifiers: .command)
+                .accessibilityLabel("Quit Notcher")
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
@@ -147,7 +149,7 @@ final class SettingsWindowController {
 
         windowController = NSWindowController(window: window)
         windowController?.showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        activateApp()
     }
 
     func showGeneralSettings() {
@@ -165,7 +167,15 @@ final class SettingsWindowController {
 
         windowController = NSWindowController(window: window)
         windowController?.showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        activateApp()
+    }
+
+    private func activateApp() {
+        if #available(macOS 14.0, *) {
+            NSApp.activate()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     private func closeExistingWindow() {
@@ -200,6 +210,12 @@ struct SettingsWindowView: View {
 }
 
 struct GeneralSettingsView: View {
+    private var versionString: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "Version \(version) (\(build))"
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "gearshape.2.fill")
@@ -209,7 +225,7 @@ struct GeneralSettingsView: View {
             Text("Notcher")
                 .font(.title.weight(.semibold))
 
-            Text("Version 1.0")
+            Text(versionString)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 

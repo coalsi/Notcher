@@ -130,9 +130,13 @@ enum MusicTextAlignment: String, CaseIterable {
 }
 
 final class MusicNotchSettings: ObservableObject {
-    // Use original keys for backward compatibility (shared with ClaudeStats)
-    private static let sizeKey = "notchSizePreset"
-    private static let alignmentKey = "notchTextAlignment"
+    private static let sizeKey = "musicNotch.sizePreset"
+    private static let alignmentKey = "musicNotch.textAlignment"
+    private static let migrationKey = "musicNotch.migrated"
+
+    // Legacy keys (pre-1.1)
+    private static let legacySizeKey = "notchSizePreset"
+    private static let legacyAlignmentKey = "notchTextAlignment"
 
     @Published var sizePreset: MusicSizePreset {
         didSet { save() }
@@ -143,6 +147,19 @@ final class MusicNotchSettings: ObservableObject {
     }
 
     init() {
+        // One-time migration from legacy keys
+        if !UserDefaults.standard.bool(forKey: Self.migrationKey) {
+            if let legacySize = UserDefaults.standard.string(forKey: Self.legacySizeKey) {
+                UserDefaults.standard.set(legacySize, forKey: Self.sizeKey)
+                UserDefaults.standard.removeObject(forKey: Self.legacySizeKey)
+            }
+            if let legacyAlign = UserDefaults.standard.string(forKey: Self.legacyAlignmentKey) {
+                UserDefaults.standard.set(legacyAlign, forKey: Self.alignmentKey)
+                UserDefaults.standard.removeObject(forKey: Self.legacyAlignmentKey)
+            }
+            UserDefaults.standard.set(true, forKey: Self.migrationKey)
+        }
+
         let sizeRaw = UserDefaults.standard.string(forKey: Self.sizeKey) ?? MusicSizePreset.medium.rawValue
         self.sizePreset = MusicSizePreset(rawValue: sizeRaw) ?? .medium
 
